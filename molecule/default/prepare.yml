@@ -1,0 +1,11 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+    - name: Ensure all hosts to are up
+      shell: "ping -c 1 -w 600 {{ item }}"
+      loop: "{{ hostvars | json_query('*.public_ip') }}"
+      run_once: true
+
+    - name: Install dotfiles
+      shell: "curl -L https://raw.githubusercontent.com/arch-anes/dotfiles/master/install.sh | bash"

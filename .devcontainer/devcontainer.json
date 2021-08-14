@@ -4,12 +4,14 @@
 		"dockerfile": "./Dockerfile",
 	},
 	"runArgs": [
+		"--privileged",
 		"--env-file",
 		".devcontainer/.env",
 	],
 	"remoteUser": "vscode",
 	"mounts": [
-		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh"
+		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh",
+		"type=bind,source=/var/run/libvirt,target=/var/run/libvirt"
 	],
 	"postCreateCommand": "ansible-galaxy install -r requirements.yml",
 	"extensions": [
