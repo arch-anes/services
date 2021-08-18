@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubegres
+type: Opaque
+stringData:
+  superUserPassword: "postgresSuperUserPsw"
+  replicationUserPassword: "postgresReplicaPsw"
+
+---
+apiVersion: kubegres.reactive-tech.io/v1
+kind: Kubegres
+metadata:
+  name: mypostgres
+  namespace: default
+spec:
+  replicas: 3
+  image: postgres:12-alpine
+  database:
+    size: 5Gi
+  scheduler:
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          # Prefer local nodes
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: local
+                  operator: In
+                  values:
+                    - "true"
+  env:
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: kubegres
+          key: superUserPassword
+
+    - name: POSTGRES_REPLICATION_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: kubegres
+          key: replicationUserPassword
+# TODO: https://artifacthub.io/packages/helm/runix/pgadmin4
