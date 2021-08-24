@@ -1,0 +1,35 @@
+---
+repo:
+  name: descheduler
+  repo_url: https://kubernetes-sigs.github.io/descheduler/
+
+package:
+  name: descheduler
+  namespace: kube-system
+  chart_ref: descheduler/descheduler
+  chart_version: v0.21.0
+  values:
+    deschedulerPolicy:
+      strategies:
+        RemoveDuplicates:
+          enabled: true
+        RemovePodsViolatingNodeTaints:
+          enabled: true
+        RemovePodsViolatingNodeAffinity:
+          enabled: true
+          params:
+            nodeAffinityType:
+              - requiredDuringSchedulingIgnoredDuringExecution
+        RemovePodsViolatingInterPodAntiAffinity:
+          enabled: true
+        LowNodeUtilization:
+          enabled: false
+        HighNodeUtilization:
+          enabled: false
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "0.25"
+      limits:
+        memory: "256Mi"
+        cpu: "1.00"
