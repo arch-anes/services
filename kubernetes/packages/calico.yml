@@ -1,0 +1,11 @@
+---
+repo:
+  name: projectcalico
+  repo_url: https://docs.projectcalico.org/charts
+
+package:
+  name: calico
+  namespace: calico-system
+  chart_ref: projectcalico/tigera-operator
+  chart_version: v3.20.0
+  values: {}

@@ -24,6 +24,8 @@
       node-external-ip: "{{ advertised_address }}"
       flannel-iface: "wg0"
       node-label: "{{ labels }}"
+      flannel-backend: "none"
+      disable-network-policy: true
 
 - name: Set k3s node facts (temporary fix)
   set_fact:
