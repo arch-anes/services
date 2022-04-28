@@ -15,6 +15,7 @@ spec:
     size: 10Gi
     storageClass: local-path-retain
   preparedDatabases:
+    authelia: {}
     bazarr: {}
     gotify: {}
     immich:
