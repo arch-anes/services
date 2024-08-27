@@ -21,6 +21,7 @@ spec:
       extensions:
         vector: public
     kubeclarity: {}
+    lldap: {}
     miniflux: {}
     n8n: {}
     nextcloud: {}
