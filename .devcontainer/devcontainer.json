@@ -6,6 +6,7 @@
 	},
 	"runArgs": [
 		"--privileged",
+		"--device=/dev/kvm",
 	],
 	"remoteUser": "vscode",
 	"postAttachCommand": "ansible-galaxy install -r requirements.yml --force",

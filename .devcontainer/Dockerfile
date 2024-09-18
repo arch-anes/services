@@ -11,11 +11,16 @@ RUN curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/s
 RUN curl https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 
-RUN apt-get update && apt-get install -y apt-transport-https pipx gettext-base kubectl helm vagrant virtualbox
+RUN apt-get update && apt-get install -y apt-transport-https pipx python3-dev gettext-base kubectl helm vagrant qemu-kvm libvirt-daemon-system libvirt-dev
 
 # Workaround for https://github.com/pypa/pipx/issues/754#issuecomment-951162846
 RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install --include-deps ansible && \
-    PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx inject  --include-deps ansible jmespath boto3 ansible-lint molecule molecule-plugins[vagrant]
+    PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx inject  --include-deps ansible jmespath boto3 ansible-lint molecule molecule-plugins[vagrant] && \
+    PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx inject ansible libvirt-python
+
+ENV VAGRANT_DEFAULT_PROVIDER=libvirt
+
+RUN libvirtd --daemon && virtlogd --daemon 
 
 RUN mkdir -p /etc/ansible
 COPY .devcontainer/ansible.cfg /etc/ansible/ansible.cfg
@@ -24,6 +29,10 @@ COPY .devcontainer/ansible.cfg /etc/ansible/ansible.cfg
 RUN userdel -r ubuntu || true
 
 USER vscode
+
+RUN vagrant plugin install vagrant-libvirt
+
+RUN sudo adduser vscode libvirt
 
 COPY requirements.yml /tmp/requirements.yml
 RUN ansible-galaxy install -r /tmp/requirements.yml
