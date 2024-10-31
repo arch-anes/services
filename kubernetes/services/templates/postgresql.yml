@@ -24,11 +24,11 @@ spec:
     immich:
       extensions:
         vector: public
-    kubeclarity: {}
     miniflux: {}
     n8n: {}
     nextcloud: {}
     obico: {}
+    openclarity: {}
     pgadmin4: {}
     prowlarr_log: {}
     prowlarr_main: {}
