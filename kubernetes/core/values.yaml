@@ -4,3 +4,6 @@
 
 # Base domain name to be used for all services
 fqdn: example.org
+
+# Kubernetes cluster's nodes's endpoints
+nodes_endpoints: []
