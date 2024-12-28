@@ -1,18 +1,4 @@
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: nextcloud
-  namespace: default
-spec:
-  ports:
-    - protocol: TCP
-      name: web
-      port: 80
-  selector:
-    app: nextcloud
-
----
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -25,145 +11,109 @@ spec:
     replacement: "https://${1}/remote.php/dav"
 
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
 metadata:
   name: nextcloud
   namespace: default
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: default-nextcloud-redirect@kubernetescrd
-    homer.service.name: Media
-    homer.item.rank: "2"
-    homer.item.logo: "https://github.com/nextcloud/server/raw/0450e47f8dda26d19a0a252ddd5a117fddfa6885/core/img/logo/logo.png"
-    homer.item.type: "Nextcloud"
 spec:
-  tls:
-    - hosts:
+  chart: nextcloud
+  repo: https://nextcloud.github.io/helm/
+  version: 6.5.2
+  targetNamespace: default
+  valuesContent: |-
+    ingress:
+      enabled: true
+      annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: default-nextcloud-redirect@kubernetescrd
+        homer.service.name: Media
+        homer.item.rank: "2"
+        homer.item.logo: "https://github.com/nextcloud/server/raw/0450e47f8dda26d19a0a252ddd5a117fddfa6885/core/img/logo/logo.png"
+        homer.item.type: "Nextcloud"
+      hosts:
+        - host: nextcloud.{{ .Values.fqdn }}
+          paths:
+            - path: /
+      tls:
+        - secretName: {{ .Values.fqdn }}-tls
+          hosts:
+            - nextcloud.{{ .Values.fqdn }}
+    nodeSelector:
+      # Schedule only on NAS nodes
+      nas: "true"
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 250m
+      limits:
+        memory: 8Gi
+        cpu: 4000m
+    nextcloud:
+      host: nextcloud.{{ .Values.fqdn }}
+      trustedDomains:
         - nextcloud.{{ .Values.fqdn }}
-      secretName: {{ .Values.fqdn }}-tls
-  rules:
-    - host: nextcloud.{{ .Values.fqdn }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: nextcloud
-                port:
-                  name: web
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nextcloud
-  namespace: default
-  labels:
-    app: nextcloud
-  annotations:
-    keel.sh/policy: force
-    keel.sh/matchTag: "true"
-    keel.sh/trigger: poll
-    keel.sh/pollSchedule: "@daily"
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: nextcloud
-  template:
-    metadata:
-      labels:
-        app: nextcloud
-    spec:
-      nodeSelector:
-        # Schedule only on NAS nodes
-        nas: "true"
-      containers:
+      extraEnv:
+        - name: TRUSTED_PROXIES
+          value: "10.43.0.0/16"
+        - name: REDIS_HOST
+          value: "redis-master"
+        - name: SMTP_HOST
+          valueFrom:
+            secretKeyRef:
+              name: smtp
+              key: hostname
+        - name: SMTP_NAME
+          valueFrom:
+            secretKeyRef:
+              name: smtp
+              key: username
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smtp
+              key: password
+        - name: SMTP_SECURE
+          value: "tls"
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_AUTHTYPE
+          value: "login"
+        - name: MAIL_FROM_ADDRESS
+          value: "nextcloud"
+        - name: MAIL_DOMAIN
+          value: "{{ .Values.fqdn }}"
+      extraVolumeMounts:
         - name: app
-          image: nextcloud:30
-          # https://github.com/nextcloud/helm/issues/55#issuecomment-1126289717
-          lifecycle:
-            postStart:
-              exec:
-                command:
-                  - "sh"
-                  - "-c"
-                  - "start-stop-daemon --start --make-pidfile --remove-pidfile --background --pidfile /cron.pid --exec /cron.sh"
-          startupProbe:
-            exec:
-              command:
-                - curl
-                - -sSf
-                - http://localhost/status.php
-            initialDelaySeconds: 30
-            periodSeconds: 60
-            failureThreshold: 10
-          resources:
-            requests:
-              memory: 128Mi
-              cpu: 250m
-            limits:
-              memory: 8Gi
-              cpu: 4000m
-          env:
-            - name: TRUSTED_PROXIES
-              value: "10.43.0.0/16"
-            - name: REDIS_HOST
-              value: "redis-master"
-            - name: REDIS_HOST_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: redis
-                  key: redis-password
-            - name: POSTGRES_HOST
-              value: "postgresql"
-            - name: POSTGRES_DB
-              value: "nextcloud"
-            - name: POSTGRES_USER
-              value: "postgres"
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres.postgresql.credentials.postgresql.acid.zalan.do
-                  key: password
-            - name: SMTP_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: smtp
-                  key: hostname
-            - name: SMTP_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: smtp
-                  key: username
-            - name: SMTP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: smtp
-                  key: password
-            - name: SMTP_SECURE
-              value: "tls"
-            - name: SMTP_PORT
-              value: "587"
-            - name: SMTP_AUTHTYPE
-              value: "login"
-            - name: MAIL_FROM_ADDRESS
-              value: "nextcloud"
-            - name: MAIL_DOMAIN
-              value: "{{ .Values.fqdn }}"
-          ports:
-            - name: web
-              containerPort: 80
-          volumeMounts:
-            - name: app
-              mountPath: /var/www/html
-            - name: data
-              mountPath: /var/www/html/data
-      volumes:
+          mountPath: /var/www/html
+        - name: data
+          mountPath: /var/www/html/data
+      extraVolumes:
         - name: app
           hostPath:
             path: /storage/nextcloud/app
         - name: data
           hostPath:
             path: /storage/nextcloud/data
+    internalDatabase:
+      enabled: false
+    externalDatabase:
+      enabled: true
+      type: postgres
+      host: postgresql
+      database: nextcloud
+      existingSecret:
+        enabled: true
+        secretName: postgres.postgresql.credentials.postgresql.acid.zalan.do
+        usernameKey: username
+        passwordKey: password
+    redis:
+      auth:
+        enabled: true
+        existingSecret: redis
+        existingSecretPasswordKey: redis-password
+    cronjob:
+      enabled: true
+    livenessProbe:
+      failureThreshold: 10
+    readinessProbe:
+      failureThreshold: 10
